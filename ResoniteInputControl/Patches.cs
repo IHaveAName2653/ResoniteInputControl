@@ -92,7 +92,7 @@ public static class Patches
 		Slot userRoot = __instance.Slot;
 
 		InitVariable(userRoot, string.Format(VariableBase, "Left", "Move"), LeftMoveChangedEvent);
-		InitVariable(userRoot, string.Format(VariableBase, "Right", "Move"), LeftMoveChangedEvent);
+		InitVariable(userRoot, string.Format(VariableBase, "Right", "Move"), RightMoveChangedEvent);
 
 		InitVariable(userRoot, string.Format(VariableBase, "Left", "Turn"), LeftTurnChangedEvent);
 		InitVariable(userRoot, string.Format(VariableBase, "Right", "Turn"), RightTurnChangedEvent);
