@@ -33,14 +33,15 @@ public struct JumpInputData
 	public List<IInputNode<bool>> inputs;
 }
 
-public struct StateData(bool leftMove = true, bool rightMove = true, bool leftTurn = true, bool rightTurn = true, bool leftJump = true, bool rightJump = true)
+public struct ControllerState(bool move = true, bool turn = true, bool jump = true)
 {
-	public bool LeftMove = leftMove;
-	public bool RightMove = rightMove;
+	public bool Move = move;
+	public bool Turn = turn;
+	public bool Jump = jump;
+}
 
-	public bool LeftTurn = leftTurn;
-	public bool RightTurn = rightTurn;
-
-	public bool LeftJump = leftJump;
-	public bool RightJump = rightJump;
+public struct StateData()
+{
+	public ControllerState Left = new();
+	public ControllerState Right = new();
 }

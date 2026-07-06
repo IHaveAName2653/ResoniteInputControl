@@ -116,132 +116,90 @@ public static class Patches
 	public static void LeftMoveChangedEvent(SyncField<bool> field)
 	{
 		bool value = field.Value;
-		if (currentStates.TryGetValue(field.World, out var state))
-		{
-			state.LeftMove = value;
-			currentStates[field.World] = state;
-		}
-		else
-		{
-			currentStates.Add(field.World, new(leftMove: value));
-		}
+		if (!currentStates.TryGetValue(field.World, out var state)) state = new();
+		state.Left.Move = value;
+		if (currentStates.ContainsKey(field.World)) currentStates[field.World] = state;
+		else currentStates.Add(field.World, state);
 		RegisterControllerModifications();
 	}
 	public static void RightMoveChangedEvent(SyncField<bool> field)
 	{
 		bool value = field.Value;
-		if (currentStates.TryGetValue(field.World, out var state))
-		{
-			state.RightMove = value;
-			currentStates[field.World] = state;
-		}
-		else
-		{
-			currentStates.Add(field.World, new(rightMove: value));
-		}
+		if (!currentStates.TryGetValue(field.World, out var state)) state = new();
+		state.Right.Move = value;
+		if (currentStates.ContainsKey(field.World)) currentStates[field.World] = state;
+		else currentStates.Add(field.World, state);
 		RegisterControllerModifications();
 	}
 
 	public static void LeftTurnChangedEvent(SyncField<bool> field)
 	{
 		bool value = field.Value;
-		if (currentStates.TryGetValue(field.World, out var state))
-		{
-			state.LeftTurn = value;
-			currentStates[field.World] = state;
-		}
-		else
-		{
-			currentStates.Add(field.World, new(leftTurn: value));
-		}
+		if (!currentStates.TryGetValue(field.World, out var state)) state = new();
+		state.Left.Turn = value;
+		if (currentStates.ContainsKey(field.World)) currentStates[field.World] = state;
+		else currentStates.Add(field.World, state);
 		RegisterControllerModifications();
 	}
 	public static void RightTurnChangedEvent(SyncField<bool> field)
 	{
 		bool value = field.Value;
-		if (currentStates.TryGetValue(field.World, out var state))
-		{
-			state.RightTurn = value;
-			currentStates[field.World] = state;
-		}
-		else
-		{
-			currentStates.Add(field.World, new(rightTurn: value));
-		}
+		if (!currentStates.TryGetValue(field.World, out var state)) state = new();
+		state.Right.Turn = value;
+		if (currentStates.ContainsKey(field.World)) currentStates[field.World] = state;
+		else currentStates.Add(field.World, state);
 		RegisterControllerModifications();
 	}
 
 	public static void LeftJumpChangedEvent(SyncField<bool> field)
 	{
 		bool value = field.Value;
-		if (currentStates.TryGetValue(field.World, out var state))
-		{
-			state.LeftJump = value;
-			currentStates[field.World] = state;
-		}
-		else
-		{
-			currentStates.Add(field.World, new(leftJump: value));
-		}
+		if (!currentStates.TryGetValue(field.World, out var state)) state = new();
+		state.Left.Jump = value;
+		if (currentStates.ContainsKey(field.World)) currentStates[field.World] = state;
+		else currentStates.Add(field.World, state);
 		RegisterControllerModifications();
 	}
 	public static void RightJumpChangedEvent(SyncField<bool> field)
 	{
 		bool value = field.Value;
-		if (currentStates.TryGetValue(field.World, out var state))
-		{
-			state.RightJump = value;
-			currentStates[field.World] = state;
-		}
-		else
-		{
-			currentStates.Add(field.World, new(rightJump: value));
-		}
+		if (!currentStates.TryGetValue(field.World, out var state)) state = new();
+		state.Right.Jump = value;
+		if (currentStates.ContainsKey(field.World)) currentStates[field.World] = state;
+		else currentStates.Add(field.World, state);
 		RegisterControllerModifications();
 	}
 
 	public static void RegisterControllerModifications()
 	{
 		if (currentWorld == null) return;
-		bool leftMove = true;
-		bool rightMove = true;
-		bool leftTurn = true;
-		bool rightTurn = true;
-		bool leftJump = true;
-		bool rightJump = true;
-		if (currentStates.TryGetValue(currentWorld, out var vals))
-		{
-			leftMove = vals.LeftMove;
-			rightMove = vals.RightMove;
-			leftTurn = vals.LeftTurn;
-			rightTurn = vals.RightTurn;
-			leftJump = vals.LeftJump;
-			rightJump = vals.RightJump;
-		}
+
+		if (!currentStates.TryGetValue(currentWorld, out var vals)) vals = new();
+
 		storedMoveData.ForEach(v =>
 		{
 			var controller = v.controller;
 
-			controller.LeftAxis = leftMove ? v.leftAxis : nullAxis;
-			controller.LeftSpeed = leftMove ? v.leftSpeed : nullSpeed;
-			controller.RightAxis = rightMove ? v.rightAxis : nullAxis;
-			controller.RightSpeed = rightMove ? v.rightSpeed : nullSpeed;
+			controller.LeftAxis = vals.Left.Move ? v.leftAxis : nullAxis;
+			controller.LeftSpeed = vals.Left.Move ? v.leftSpeed : nullSpeed;
+			controller.RightAxis = vals.Right.Move ? v.rightAxis : nullAxis;
+			controller.RightSpeed = vals.Right.Move ? v.rightSpeed : nullSpeed;
 		});
 
 		storedTurnData.ForEach(v =>
 		{
 			var controller = v.controller;
 
-			controller.LeftAxis = leftTurn ? v.leftAxis : nullAxis;
-			controller.RightAxis = rightTurn ? v.rightAxis : nullAxis;
+			controller.LeftAxis = vals.Left.Turn ? v.leftAxis : nullAxis;
+			controller.RightAxis = vals.Right.Turn ? v.rightAxis : nullAxis;
 		});
 
 		storedTurn3AxisData.ForEach(v =>
 		{
 			var controller = v.controller;
 
-			controller.LeftAxis = leftTurn ? v.leftAxis : nullAxis;
-			controller.RightAxis = rightTurn ? v.rightAxis : nullAxis;
+			controller.LeftAxis = vals.Left.Turn ? v.leftAxis : nullAxis;
+			controller.RightAxis = vals.Right.Turn ? v.rightAxis : nullAxis;
 		});
 
 
@@ -251,8 +209,8 @@ public static class Patches
 
 			controller.Inputs.RemoveAt(0);
 			controller.Inputs.RemoveAt(0);
-			controller.Inputs.Add(leftJump ? v.inputs[0] : nullJump);
-			controller.Inputs.Add(rightJump ? v.inputs[1] : nullJump);
+			controller.Inputs.Add(vals.Left.Jump ? v.inputs[0] : nullJump);
+			controller.Inputs.Add(vals.Right.Jump ? v.inputs[1] : nullJump);
 		});
 	}
 
