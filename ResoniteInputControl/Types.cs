@@ -42,6 +42,6 @@ public struct ControllerState(bool move = true, bool turn = true, bool jump = tr
 
 public struct StateData()
 {
-	public ControllerState Left = new();
-	public ControllerState Right = new();
+	public ControllerState Left = new(true);
+	public ControllerState Right = new(true);
 }
