@@ -66,10 +66,29 @@ public static class Patches
 	[HarmonyPostfix]
 	public static void FindControllerJumpInputPatch(AnyInput __result)
 	{
+		var LeftSource = (ControllerDigitalSource)__result.Inputs.FirstOrDefault(r =>
+		{
+			if (typeof(ControllerDigitalSource).IsAssignableFrom(r.GetType())) return false;
+			ControllerDigitalSource source = (ControllerDigitalSource)r;
+			if (source.Side != Renderite.Shared.Chirality.Left) return false;
+			if (source.PropertyName != "Jump") return false;
+			return true;
+		}, __result.Inputs[0]);
+		var RightSource = (ControllerDigitalSource)__result.Inputs.FirstOrDefault(r =>
+		{
+			if (typeof(ControllerDigitalSource).IsAssignableFrom(r.GetType())) return false;
+			ControllerDigitalSource source = (ControllerDigitalSource)r;
+			if (source.Side != Renderite.Shared.Chirality.Right) return false;
+			if (source.PropertyName != "Jump") return false;
+			return true;
+		}, __result.Inputs[1]);
 		storedJumpData.Add(new()
 		{
 			controller = __result,
-			inputs = [..__result.Inputs] // copy the values
+			LeftButton = LeftSource,
+			RightButton = RightSource,
+			LeftIndex = __result.Inputs.IndexOf(LeftSource),
+			RightIndex = __result.Inputs.IndexOf(RightSource),
 		});
 	}
 
@@ -111,7 +130,7 @@ public static class Patches
 		UpdateForWorld(world);
 	}
 
-	
+
 
 	public static void LeftMoveChangedEvent(SyncField<bool> field)
 	{
@@ -173,6 +192,7 @@ public static class Patches
 	public static void RegisterControllerModifications()
 	{
 		if (currentWorld == null) return;
+		if (!currentWorld.LocalUser.VR_Active) return;
 
 		if (!currentStates.TryGetValue(currentWorld, out var vals)) vals = new();
 
@@ -207,10 +227,9 @@ public static class Patches
 		{
 			var controller = v.controller;
 
-			controller.Inputs.RemoveAt(0);
-			controller.Inputs.RemoveAt(0);
-			controller.Inputs.Add(vals.Left.Jump ? v.inputs[0] : nullJump);
-			controller.Inputs.Add(vals.Right.Jump ? v.inputs[1] : nullJump);
+
+			controller.Inputs[v.LeftIndex] = vals.Left.Jump ? v.LeftButton : nullJump;
+			controller.Inputs[v.RightIndex] = vals.Right.Jump ? v.RightButton : nullJump;
 		});
 	}
 
