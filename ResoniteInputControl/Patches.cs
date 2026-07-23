@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Elements.Core;
@@ -96,7 +97,6 @@ public static class Patches
 	{
 		DynamicVariableHelper.ParsePath(VariableName, out string spaceName, out string varName);
 		var manager = root.GetComponent<DynamicVariableSpace>(x => x.SpaceName.Value == "User");
-		ResoniteInputControl.Log.LogWarning($"Space Manager on {VariableName} is {manager}");
 		bool last = true;
 		if (ResoniteInputControl.GenerateDynamicVarsOnUser.Value)
 		{
