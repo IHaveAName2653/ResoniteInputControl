@@ -29,7 +29,15 @@ public class ResoniteInputControl : ResoniteMod
 
 	// Example Mod Config Key // Provides a "Mod Toggle" (assuming the functions implement it)
 	[AutoRegisterConfigKey]
-	public static ModConfigurationKey<bool> shouldBeActive = new("IsActive", "If the mod should generate the dynvars", () => true);
+	public static ModConfigurationKey<bool> shouldBeActive = new("Enabled", "If the mod should do anything", () => true);
+	[AutoRegisterConfigKey]
+	public static ModConfigurationKey<bool> GenerateDynamicVarsOnUser = new("Generate Variables", "Generates the needed Dyanmic Variables on User Root. If this is off it will instead attempt to find the component with the correct space name and subscribe to that.", () => true);
+	[AutoRegisterConfigKey]
+	public static ModConfigurationKey<bool> AddMovementVars = new("Position Variables", "Enables if it actually cares about checking for the variable for movement.", () => true);
+	[AutoRegisterConfigKey]
+	public static ModConfigurationKey<bool> AddRotationVars = new("Rotation Variables", "Enables if it actually cares about checking for the variable for rotation.", () => true);
+	[AutoRegisterConfigKey]
+	public static ModConfigurationKey<bool> AddJumpVars = new("Jump Variables", "Enables if it actually cares about checking for the variable for jumping.", () => true);
 
 	static ResoniteInputControl()
 	{

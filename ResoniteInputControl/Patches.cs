@@ -66,22 +66,22 @@ public static class Patches
 	[HarmonyPostfix]
 	public static void FindControllerJumpInputPatch(AnyInput __result)
 	{
-		var LeftSource = (ControllerDigitalSource)__result.Inputs.FirstOrDefault(r =>
+		var LeftSource = __result.Inputs.FirstOrDefault(r =>
 		{
 			if (typeof(ControllerDigitalSource).IsAssignableFrom(r.GetType())) return false;
 			ControllerDigitalSource source = (ControllerDigitalSource)r;
 			if (source.Side != Renderite.Shared.Chirality.Left) return false;
 			if (source.PropertyName != "Jump") return false;
 			return true;
-		}, __result.Inputs[0]);
-		var RightSource = (ControllerDigitalSource)__result.Inputs.FirstOrDefault(r =>
+		}, __result.Inputs.Count >= 1 ? __result.Inputs[0] : nullJump);
+		var RightSource = __result.Inputs.FirstOrDefault(r =>
 		{
 			if (typeof(ControllerDigitalSource).IsAssignableFrom(r.GetType())) return false;
 			ControllerDigitalSource source = (ControllerDigitalSource)r;
 			if (source.Side != Renderite.Shared.Chirality.Right) return false;
 			if (source.PropertyName != "Jump") return false;
 			return true;
-		}, __result.Inputs[1]);
+		}, __result.Inputs.Count >= 2 ? __result.Inputs[1] : nullJump);
 		storedJumpData.Add(new()
 		{
 			controller = __result,
@@ -92,12 +92,33 @@ public static class Patches
 		});
 	}
 
-	static void InitVariable(Slot root, string VariableName, SyncFieldEvent<bool> OnChange)
+	static void InitReadVariable(Slot root, string VariableName, Action<bool, World> OnChange)
 	{
-		var component = root.AttachComponent<DynamicValueVariable<bool>>();
-		component.VariableName.Value = VariableName;
-		component.Value.Value = true;
-		component.Value.OnValueChange += OnChange;
+		DynamicVariableHelper.ParsePath(VariableName, out string spaceName, out string varName);
+		var manager = root.GetComponent<DynamicVariableSpace>(x => x.SpaceName.Value == "User");
+		ResoniteInputControl.Log.LogWarning($"Space Manager on {VariableName} is {manager}");
+		bool last = true;
+		if (ResoniteInputControl.GenerateDynamicVarsOnUser.Value)
+		{
+			var component = root.AttachComponent<DynamicValueVariable<bool>>();
+			component.Persistent = false;
+			component.VariableName.Value = VariableName;
+			component.Value.Value = true;
+		}
+
+		root.StartTask(async () =>
+		{
+			while (!root.IsDestroyed)
+			{
+				await new Updates(3);
+				if (!manager.TryReadValue<bool>(varName, out bool val)) val = true;
+				if (val != last)
+				{
+					OnChange(val, root.World);
+					last = val;
+				}
+			}
+		});
 	}
 
 	[HarmonyPostfix]
@@ -110,15 +131,18 @@ public static class Patches
 		if (world.IsUserspace()) return;
 		Slot userRoot = __instance.Slot;
 
-		InitVariable(userRoot, string.Format(VariableBase, "Left", "Move"), LeftMoveChangedEvent);
-		InitVariable(userRoot, string.Format(VariableBase, "Right", "Move"), RightMoveChangedEvent);
-
-		InitVariable(userRoot, string.Format(VariableBase, "Left", "Turn"), LeftTurnChangedEvent);
-		InitVariable(userRoot, string.Format(VariableBase, "Right", "Turn"), RightTurnChangedEvent);
-
-		InitVariable(userRoot, string.Format(VariableBase, "Left", "Jump"), LeftJumpChangedEvent);
-		InitVariable(userRoot, string.Format(VariableBase, "Right", "Jump"), RightJumpChangedEvent);
-
+		if (ResoniteInputControl.AddMovementVars.Value){
+			InitReadVariable(userRoot, string.Format(VariableBase, "Left", "Move"), LeftMoveChangedEvent);
+			InitReadVariable(userRoot, string.Format(VariableBase, "Right", "Move"), RightMoveChangedEvent);
+		}
+		if (ResoniteInputControl.AddRotationVars.Value){
+			InitReadVariable(userRoot, string.Format(VariableBase, "Left", "Turn"), LeftTurnChangedEvent);
+			InitReadVariable(userRoot, string.Format(VariableBase, "Right", "Turn"), RightTurnChangedEvent);
+		}
+		if (ResoniteInputControl.AddJumpVars.Value){
+			InitReadVariable(userRoot, string.Format(VariableBase, "Left", "Jump"), LeftJumpChangedEvent);
+			InitReadVariable(userRoot, string.Format(VariableBase, "Right", "Jump"), RightJumpChangedEvent);
+		}
 
 		UpdateForWorld(world);
 	}
@@ -132,60 +156,54 @@ public static class Patches
 
 
 
-	public static void LeftMoveChangedEvent(SyncField<bool> field)
+	public static void LeftMoveChangedEvent(bool value, World world)
 	{
-		bool value = field.Value;
-		if (!currentStates.TryGetValue(field.World, out var state)) state = new();
+		if (!currentStates.TryGetValue(world, out var state)) state = new();
 		state.Left.Move = value;
-		if (currentStates.ContainsKey(field.World)) currentStates[field.World] = state;
-		else currentStates.Add(field.World, state);
+		if (currentStates.ContainsKey(world)) currentStates[world] = state;
+		else currentStates.Add(world, state);
 		RegisterControllerModifications();
 	}
-	public static void RightMoveChangedEvent(SyncField<bool> field)
+	public static void RightMoveChangedEvent(bool value, World world)
 	{
-		bool value = field.Value;
-		if (!currentStates.TryGetValue(field.World, out var state)) state = new();
+		if (!currentStates.TryGetValue(world, out var state)) state = new();
 		state.Right.Move = value;
-		if (currentStates.ContainsKey(field.World)) currentStates[field.World] = state;
-		else currentStates.Add(field.World, state);
+		if (currentStates.ContainsKey(world)) currentStates[world] = state;
+		else currentStates.Add(world, state);
 		RegisterControllerModifications();
 	}
 
-	public static void LeftTurnChangedEvent(SyncField<bool> field)
+	public static void LeftTurnChangedEvent(bool value, World world)
 	{
-		bool value = field.Value;
-		if (!currentStates.TryGetValue(field.World, out var state)) state = new();
+		if (!currentStates.TryGetValue(world, out var state)) state = new();
 		state.Left.Turn = value;
-		if (currentStates.ContainsKey(field.World)) currentStates[field.World] = state;
-		else currentStates.Add(field.World, state);
+		if (currentStates.ContainsKey(world)) currentStates[world] = state;
+		else currentStates.Add(world, state);
 		RegisterControllerModifications();
 	}
-	public static void RightTurnChangedEvent(SyncField<bool> field)
+	public static void RightTurnChangedEvent(bool value, World world)
 	{
-		bool value = field.Value;
-		if (!currentStates.TryGetValue(field.World, out var state)) state = new();
+		if (!currentStates.TryGetValue(world, out var state)) state = new();
 		state.Right.Turn = value;
-		if (currentStates.ContainsKey(field.World)) currentStates[field.World] = state;
-		else currentStates.Add(field.World, state);
+		if (currentStates.ContainsKey(world)) currentStates[world] = state;
+		else currentStates.Add(world, state);
 		RegisterControllerModifications();
 	}
 
-	public static void LeftJumpChangedEvent(SyncField<bool> field)
+	public static void LeftJumpChangedEvent(bool value, World world)
 	{
-		bool value = field.Value;
-		if (!currentStates.TryGetValue(field.World, out var state)) state = new();
+		if (!currentStates.TryGetValue(world, out var state)) state = new();
 		state.Left.Jump = value;
-		if (currentStates.ContainsKey(field.World)) currentStates[field.World] = state;
-		else currentStates.Add(field.World, state);
+		if (currentStates.ContainsKey(world)) currentStates[world] = state;
+		else currentStates.Add(world, state);
 		RegisterControllerModifications();
 	}
-	public static void RightJumpChangedEvent(SyncField<bool> field)
+	public static void RightJumpChangedEvent(bool value, World world)
 	{
-		bool value = field.Value;
-		if (!currentStates.TryGetValue(field.World, out var state)) state = new();
+		if (!currentStates.TryGetValue(world, out var state)) state = new();
 		state.Right.Jump = value;
-		if (currentStates.ContainsKey(field.World)) currentStates[field.World] = state;
-		else currentStates.Add(field.World, state);
+		if (currentStates.ContainsKey(world)) currentStates[world] = state;
+		else currentStates.Add(world, state);
 		RegisterControllerModifications();
 	}
 
@@ -195,42 +213,45 @@ public static class Patches
 		if (!currentWorld.LocalUser.VR_Active) return;
 
 		if (!currentStates.TryGetValue(currentWorld, out var vals)) vals = new();
+		if (ResoniteInputControl.AddMovementVars.Value){
+			storedMoveData.ForEach(v =>
+			{
+				var controller = v.controller;
 
-		storedMoveData.ForEach(v =>
-		{
-			var controller = v.controller;
+				controller.LeftAxis = vals.Left.Move ? v.leftAxis : nullAxis;
+				controller.LeftSpeed = vals.Left.Move ? v.leftSpeed : nullSpeed;
+				controller.RightAxis = vals.Right.Move ? v.rightAxis : nullAxis;
+				controller.RightSpeed = vals.Right.Move ? v.rightSpeed : nullSpeed;
+			});
+		}
+		if (ResoniteInputControl.AddRotationVars.Value){
+			storedTurnData.ForEach(v =>
+			{
+				var controller = v.controller;
 
-			controller.LeftAxis = vals.Left.Move ? v.leftAxis : nullAxis;
-			controller.LeftSpeed = vals.Left.Move ? v.leftSpeed : nullSpeed;
-			controller.RightAxis = vals.Right.Move ? v.rightAxis : nullAxis;
-			controller.RightSpeed = vals.Right.Move ? v.rightSpeed : nullSpeed;
-		});
+				controller.LeftAxis = vals.Left.Turn ? v.leftAxis : nullAxis;
+				controller.RightAxis = vals.Right.Turn ? v.rightAxis : nullAxis;
+			});
 
-		storedTurnData.ForEach(v =>
-		{
-			var controller = v.controller;
+			storedTurn3AxisData.ForEach(v =>
+			{
+				var controller = v.controller;
 
-			controller.LeftAxis = vals.Left.Turn ? v.leftAxis : nullAxis;
-			controller.RightAxis = vals.Right.Turn ? v.rightAxis : nullAxis;
-		});
+				controller.LeftAxis = vals.Left.Turn ? v.leftAxis : nullAxis;
+				controller.RightAxis = vals.Right.Turn ? v.rightAxis : nullAxis;
+			});
+		}
 
-		storedTurn3AxisData.ForEach(v =>
-		{
-			var controller = v.controller;
-
-			controller.LeftAxis = vals.Left.Turn ? v.leftAxis : nullAxis;
-			controller.RightAxis = vals.Right.Turn ? v.rightAxis : nullAxis;
-		});
-
-
-		storedJumpData.ForEach(v =>
-		{
-			var controller = v.controller;
+		if (ResoniteInputControl.AddJumpVars.Value){
+			storedJumpData.ForEach(v =>
+			{
+				var controller = v.controller;
 
 
-			controller.Inputs[v.LeftIndex] = vals.Left.Jump ? v.LeftButton : nullJump;
-			controller.Inputs[v.RightIndex] = vals.Right.Jump ? v.RightButton : nullJump;
-		});
+				controller.Inputs[v.LeftIndex] = vals.Left.Jump ? v.LeftButton : nullJump;
+				controller.Inputs[v.RightIndex] = vals.Right.Jump ? v.RightButton : nullJump;
+			});
+		}
 	}
 
 	public static void UpdateForWorld(World world)

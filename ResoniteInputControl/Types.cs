@@ -30,8 +30,8 @@ public struct Turn3AxisInputData
 public struct JumpInputData
 {
 	public AnyInput controller;
-	public ControllerDigitalSource LeftButton;
-	public ControllerDigitalSource RightButton;
+	public IInputNode<bool> LeftButton;
+    public IInputNode<bool> RightButton;
 	public int LeftIndex;
 	public int RightIndex;
 }
